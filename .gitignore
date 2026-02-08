@@ -1,0 +1,8 @@
+node_modules/
+dist/
+data/threez-jobs.db
+data/threez-jobs.db-wal
+data/threez-jobs.db-shm
+data/uploads/
+.env
+*.tsbuildinfo
