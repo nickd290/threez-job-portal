@@ -28,6 +28,7 @@ sqlite.exec(`
     customer_name TEXT NOT NULL,
     email_body TEXT NOT NULL,
     po_number TEXT,
+    source TEXT,
     status TEXT NOT NULL DEFAULT 'new',
     notes TEXT NOT NULL DEFAULT '',
     file_count INTEGER NOT NULL DEFAULT 0,
@@ -45,6 +46,13 @@ sqlite.exec(`
     created_at INTEGER
   );
 `);
+
+// Migrate: add source column if missing (for existing DBs)
+try {
+  sqlite.exec(`ALTER TABLE jobs ADD COLUMN source TEXT`);
+} catch {
+  // Column already exists
+}
 
 export const db = drizzle(sqlite, { schema });
 export { schema };
