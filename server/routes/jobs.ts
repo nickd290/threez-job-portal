@@ -68,7 +68,7 @@ router.get("/:id", async (req, res) => {
 // POST /api/jobs - create job with file uploads
 router.post("/", upload.array("files", 20), async (req, res) => {
   try {
-    const { title, customerName, emailBody } = req.body;
+    const { title, customerName, emailBody, poNumber, source } = req.body;
     if (!title || !customerName || !emailBody) {
       return res.status(400).json({ error: "title, customerName, and emailBody are required" });
     }
@@ -82,6 +82,8 @@ router.post("/", upload.array("files", 20), async (req, res) => {
       title,
       customerName,
       emailBody,
+      poNumber: poNumber || null,
+      source: source || null,
       fileCount: uploadedFiles.length,
     }).returning();
 

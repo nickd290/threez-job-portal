@@ -34,10 +34,33 @@ import {
 } from "@/components/ui/dialog";
 import { useUpdateJob, useDeleteJob } from "@/hooks/useJobs";
 import { filesApi } from "@/lib/api";
-import type { JobWithFiles, JobStatus, FileData } from "@/types";
+import type { JobWithFiles, JobStatus, JobSource, FileData } from "@/types";
 
 interface JobDetailProps {
   job: JobWithFiles;
+}
+
+function sourceBadge(source: JobSource) {
+  switch (source) {
+    case "hod":
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
+          HOD
+        </Badge>
+      );
+    case "team-concept":
+      return (
+        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-50">
+          Team Concept
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-50">
+          Portal
+        </Badge>
+      );
+  }
 }
 
 function statusBadge(status: JobStatus) {
@@ -170,8 +193,14 @@ export default function JobDetail({ job }: JobDetailProps) {
       {/* Header section */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight">{job.title}</h1>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Badge variant="secondary">{job.customerName}</Badge>
+          {sourceBadge(job.source)}
+          {job.poNumber && (
+            <Badge variant="outline" className="font-mono">
+              PO: {job.poNumber}
+            </Badge>
+          )}
           <span className="text-sm text-muted-foreground">
             Submitted {formatDate(job.createdAt)}
           </span>

@@ -9,11 +9,34 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { JobData, JobStatus } from "@/types";
+import type { JobData, JobStatus, JobSource } from "@/types";
 
 interface JobTableProps {
   jobs: JobData[];
   isLoading: boolean;
+}
+
+function sourceBadge(source: JobSource) {
+  switch (source) {
+    case "hod":
+      return (
+        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">
+          HOD
+        </Badge>
+      );
+    case "team-concept":
+      return (
+        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-50">
+          Team Concept
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-50">
+          Portal
+        </Badge>
+      );
+  }
 }
 
 function statusBadge(status: JobStatus) {
@@ -91,6 +114,7 @@ export default function JobTable({ jobs, isLoading }: JobTableProps) {
         <TableRow>
           <TableHead>Title</TableHead>
           <TableHead>Customer</TableHead>
+          <TableHead>Source</TableHead>
           <TableHead>Status</TableHead>
           <TableHead>Files</TableHead>
           <TableHead>Submitted</TableHead>
@@ -105,6 +129,7 @@ export default function JobTable({ jobs, isLoading }: JobTableProps) {
           >
             <TableCell className="font-medium">{job.title}</TableCell>
             <TableCell>{job.customerName}</TableCell>
+            <TableCell>{sourceBadge(job.source)}</TableCell>
             <TableCell>{statusBadge(job.status)}</TableCell>
             <TableCell>
               <span className="flex items-center gap-1 text-muted-foreground">

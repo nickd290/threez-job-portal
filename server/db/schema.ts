@@ -7,6 +7,7 @@ export const jobs = sqliteTable("jobs", {
   customerName: text("customer_name").notNull(),
   emailBody: text("email_body").notNull(),
   poNumber: text("po_number"),
+  source: text("source"),
   status: text("status").notNull().default("new"),
   notes: text("notes").notNull().default(""),
   fileCount: integer("file_count").notNull().default(0),

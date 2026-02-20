@@ -11,10 +11,13 @@ export interface FileData {
   createdAt: string;
 }
 
+export type JobSource = "hod" | "team-concept" | null;
+
 export interface JobData {
   id: string;
   title: string;
   poNumber: string | null;
+  source: JobSource;
   customerName: string;
   emailBody: string;
   status: JobStatus;
