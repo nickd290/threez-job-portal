@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useLocation } from "wouter";
 import { Paperclip, Inbox, Loader2 } from "lucide-react";
 import {
@@ -68,27 +69,86 @@ function statusBadge(status: JobStatus) {
 }
 
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString("en-US", {
+  return new Date(dateStr).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 }
 
+function formatTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+/** Get a date key like "2026-02-20" from a timestamp */
+function dateKey(dateStr: string): string {
+  return new Date(dateStr).toISOString().split("T")[0];
+}
+
+interface CustomerGroup {
+  customerName: string;
+  source: JobSource;
+  dateGroups: { date: string; label: string; jobs: JobData[] }[];
+  jobCount: number;
+}
+
+function groupJobs(jobs: JobData[]): CustomerGroup[] {
+  // Group by customer using plain object
+  const customerObj: Record<string, JobData[]> = {};
+  for (const job of jobs) {
+    const key = job.customerName;
+    if (!customerObj[key]) customerObj[key] = [];
+    customerObj[key].push(job);
+  }
+
+  // Build groups sorted by most recent job per customer
+  const groups: CustomerGroup[] = [];
+  for (const customerName of Object.keys(customerObj)) {
+    const customerJobs = customerObj[customerName];
+
+    // Sort jobs newest first
+    const sorted = [...customerJobs].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Sub-group by date using plain object (preserves insertion order)
+    const dateObj: Record<string, JobData[]> = {};
+    for (const job of sorted) {
+      const dk = dateKey(job.createdAt);
+      if (!dateObj[dk]) dateObj[dk] = [];
+      dateObj[dk].push(job);
+    }
+
+    const dateGroups = Object.keys(dateObj).map((dk) => ({
+      date: dk,
+      label: formatDate(dateObj[dk][0].createdAt),
+      jobs: dateObj[dk],
+    }));
+
+    groups.push({
+      customerName,
+      source: sorted[0].source,
+      dateGroups,
+      jobCount: sorted.length,
+    });
+  }
+
+  // Sort customer groups: most recent submission first
+  groups.sort((a, b) => {
+    const aDate = new Date(a.dateGroups[0].jobs[0].createdAt).getTime();
+    const bDate = new Date(b.dateGroups[0].jobs[0].createdAt).getTime();
+    return bDate - aDate;
+  });
+
+  return groups;
+}
+
 export default function JobTable({ jobs, isLoading }: JobTableProps) {
   const [, navigate] = useLocation();
+  const groups = useMemo(() => groupJobs(jobs), [jobs]);
 
   if (isLoading) {
     return (
@@ -109,40 +169,65 @@ export default function JobTable({ jobs, isLoading }: JobTableProps) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Title</TableHead>
-          <TableHead>Customer</TableHead>
-          <TableHead>Source</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Files</TableHead>
-          <TableHead>Submitted</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {jobs.map((job) => (
-          <TableRow
-            key={job.id}
-            className="cursor-pointer hover:bg-muted/50 transition-colors"
-            onClick={() => navigate(`/jobs/${job.id}`)}
-          >
-            <TableCell className="font-medium">{job.title}</TableCell>
-            <TableCell>{job.customerName}</TableCell>
-            <TableCell>{sourceBadge(job.source)}</TableCell>
-            <TableCell>{statusBadge(job.status)}</TableCell>
-            <TableCell>
-              <span className="flex items-center gap-1 text-muted-foreground">
-                <Paperclip className="h-4 w-4" />
-                {job.fileCount}
-              </span>
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-              {formatDate(job.createdAt)}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="space-y-6">
+      {groups.map((group) => (
+        <div key={group.customerName} className="space-y-1">
+          {/* Customer header */}
+          <div className="flex items-center gap-3 px-1 pb-2">
+            <h2 className="text-lg font-semibold">{group.customerName}</h2>
+            {sourceBadge(group.source)}
+            <span className="text-sm text-muted-foreground">
+              {group.jobCount} job{group.jobCount !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Files</TableHead>
+                  <TableHead>Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {group.dateGroups.map((dg) => (
+                  <>
+                    {/* Date sub-header */}
+                    <TableRow key={dg.date} className="bg-muted/40 hover:bg-muted/40">
+                      <TableCell colSpan={4} className="py-1.5">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                          {dg.label}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                    {dg.jobs.map((job) => (
+                      <TableRow
+                        key={job.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => navigate(`/jobs/${job.id}`)}
+                      >
+                        <TableCell className="font-medium">{job.title}</TableCell>
+                        <TableCell>{statusBadge(job.status)}</TableCell>
+                        <TableCell>
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <Paperclip className="h-4 w-4" />
+                            {job.fileCount}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatTime(job.createdAt)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
